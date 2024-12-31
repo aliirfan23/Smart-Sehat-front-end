@@ -1,20 +1,70 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import DateTimePicker from 'react-native-modal-datetime-picker';
 import { useRouter } from 'expo-router';
 
 export default function SignUp({ navigation }) {
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [dob, setDob] = useState('');
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
 
-  const router = useRouter();  
-  const navigateTouserLogin = () => {
-    router.push('/userLogin');  // Navigate to the SignUp screen
+  const router = useRouter();
+
+  const handleConfirm = (date) => {
+    setDob(date.toISOString().split('T')[0]);
+    setDatePickerVisibility(false);
   };
-  const navigateHome = () => {
-    router.push('/medicalHistory');  // Navigate to the SignUp screen
-  };
+
+  const submitForm = async () => {
+    if (!firstName || !lastName || !email || !password || !dob) {
+        Alert.alert('Error', 'Please fill in all fields.');
+        return;
+    }
+
+    try {
+        // Convert form data into URL-encoded format
+        const formData = new URLSearchParams();
+        formData.append('firstName', firstName);
+        formData.append('lastName', lastName);
+        formData.append('email', email);
+        formData.append('password', password);
+        formData.append('dateOfBirth', dob);
+
+        // Make POST request
+        const response = await fetch('http://192.168.1.19:5000/user/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: formData.toString(),
+        });
+
+        // Handle JSON response
+        const result = await response.json();
+        if (response.status === 201) {
+            Alert.alert('Success', 'Account created successfully.', [
+                {
+                    text: 'OK',
+                    onPress: () => router.push('/userLogin'), // Redirect to login page
+                },
+            ]);
+        } else if (response.status === 409) {
+            Alert.alert('Error', result.message || 'User already exists.');
+        } else {
+            Alert.alert('Error', result.message || 'Something went wrong.');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        Alert.alert('Error', 'Failed to connect to the server.');
+    }
+};
+
+
+
   return (
     <View style={styles.container}>
       <Image source={require('./../../assets/images/logo.png')} style={styles.logo} />
@@ -23,13 +73,22 @@ export default function SignUp({ navigation }) {
 
       <TextInput
         style={styles.input}
-        placeholder="Name"
-        value={name}
-        onChangeText={setName}
+        placeholder="First Name"
+        placeholderTextColor="#8A8A8A"
+        value={firstName}
+        onChangeText={setFirstName}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Last Name"
+        placeholderTextColor="#8A8A8A"
+        value={lastName}
+        onChangeText={setLastName}
       />
       <TextInput
         style={styles.input}
         placeholder="Email"
+        placeholderTextColor="#8A8A8A"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -38,6 +97,7 @@ export default function SignUp({ navigation }) {
         <TextInput
           style={styles.inputPassword}
           placeholder="Password"
+          placeholderTextColor="#8A8A8A"
           value={password}
           onChangeText={setPassword}
           secureTextEntry={!showPassword}
@@ -50,25 +110,27 @@ export default function SignUp({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.createAccountButton}>
-        <Text style={styles.createAccountText}>Create account</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={navigateTouserLogin}>
-        <Text style={styles.loginText}>
-          Already have an account? <Text style={styles.link}>Log in</Text>
+      <TouchableOpacity style={styles.input} onPress={() => setDatePickerVisibility(true)}>
+        <Text style={dob ? styles.dobText : styles.dobPlaceholder}>
+          {dob || 'Date of Birth'}
         </Text>
       </TouchableOpacity>
 
-      <View style={styles.orContainer}>
-        <Text style={styles.orText}>Or</Text>
-        <View style={styles.divider} />
-      </View>
+      <DateTimePicker
+        isVisible={isDatePickerVisible}
+        mode="date"
+        onConfirm={handleConfirm}
+        onCancel={() => setDatePickerVisibility(false)}
+      />
 
-      <TouchableOpacity 
-      style={styles.guestButton}
-      onPress={navigateHome}>
-        <Text style={styles.guestText}>Continue as guest</Text>
+      <TouchableOpacity style={styles.createAccountButton} onPress={submitForm}>
+        <Text style={styles.createAccountText}>Create account</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => router.push('/userLogin')}>
+        <Text style={styles.loginText}>
+          Already have an account? <Text style={styles.link}>Log in</Text>
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -79,7 +141,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white',
     justifyContent: 'center',
-    //alignItems: 'center',
     paddingHorizontal: 30,
   },
   logo: {
@@ -109,6 +170,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontSize: 16,
   },
+  dobText: {
+    fontSize: 16,
+    color: '#000',
+  },
+  dobPlaceholder: {
+    fontSize: 16,
+    color: '#8A8A8A',
+  },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -129,11 +198,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   createAccountButton: {
-    // backgroundColor: '#F7577A',
-    // borderRadius: 10,
-    // paddingVertical: 15,
-    // alignItems: 'center',
-    // marginBottom: 20,
     width: '100%',
     backgroundColor: '#F7577A',
     paddingVertical: 15,
@@ -154,31 +218,6 @@ const styles = StyleSheet.create({
   },
   link: {
     color: '#FF4D6D',
-    fontWeight: 'bold',
-  },
-  orContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 20,
-  },
-  orText: {
-    fontSize: 14,
-    color: '#8A8A8A',
-    marginHorizontal: 5,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E8E8E8',
-  },
-  guestButton: {
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  guestText: {
-    color: '#FF4D6D',
-    fontSize: 16,
     fontWeight: 'bold',
   },
 });

@@ -4,7 +4,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 const apiKey = 'b9810cbd4d7e2d693c4d398deb7a73456af29c637ce82f8c6abbc1a9ac1440d3'; // Replace with your actual API key
-const apiUrl = 'http://192.168.24.227:5000/chat'; // Replace with your actual API endpoint
+const apiUrl = 'http://192.168.1.55:5000/chat'; // Replace with your actual API endpoint
 
 export default function ChatBot() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function ChatBot() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`, // Your API key here
+            //'Authorization': `Bearer ${apiKey}`, // Your API key here
           },
           body: JSON.stringify({ message: inputText }),
         });
